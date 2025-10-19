@@ -1,152 +1,149 @@
-# predictive_model_v2.py
-# ======================================================
-# Improved Predictive Model for Marketing Campaign Response
-# By: [Your Name]
-# ======================================================
-
+# predictive_model.py
 import pandas as pd
 import numpy as np
+import os
 import joblib
 from datetime import datetime
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, roc_auc_score
-from imblearn.over_sampling import SMOTE
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import classification_report
 
-# ======================================================
-# 1. Load and Clean Dataset
-# ======================================================
-print(">>> Loading and cleaning data...")
-df = pd.read_csv('customer_segmentation.csv')
+# === 1. Load dataset ===
+df = pd.read_csv("customer_segmentation.csv")
 
-# Handle missing income
-df['Income'] = df['Income'].fillna(df['Income'].median())
+target_col = 'Response'
+if target_col not in df.columns:
+    raise ValueError(f"Column '{target_col}' not found in dataset. Please check column names.")
 
-# Drop unnecessary columns
-df.drop(['ID', 'Z_CostContact', 'Z_Revenue'], axis=1, inplace=True)
+# === 2. Tambahkan fitur turunan agar cocok dengan form input ===
 
-# ======================================================
-# 2. Feature Engineering (Smart New Features)
-# ======================================================
-print(">>> Performing feature engineering...")
+# -- Age
+if 'Year_Birth' in df.columns:
+    df['Age'] = 2025 - df['Year_Birth']
+else:
+    print("⚠️ Warning: 'Year_Birth' column missing, Age set to 0.")
+    df['Age'] = 0
 
-# Date processing
-df['Dt_Customer'] = pd.to_datetime(df['Dt_Customer'], dayfirst=True)
-latest_date = df['Dt_Customer'].max() + pd.DateOffset(days=1)
+# -- TotalSpending
+spending_cols = ['MntWines', 'MntFruits', 'MntMeatProducts', 'MntFishProducts', 'MntSweetProducts', 'MntGoldProds']
+existing_spend_cols = [c for c in spending_cols if c in df.columns]
+if existing_spend_cols:
+    df['TotalSpending'] = df[existing_spend_cols].sum(axis=1)
+else:
+    print("⚠️ Warning: No spending columns found, TotalSpending set to 0.")
+    df['TotalSpending'] = 0
 
-df['Age'] = latest_date.year - df['Year_Birth']
-df['Customer_Tenure_Days'] = (latest_date - df['Dt_Customer']).dt.days
-df['TotalSpending'] = df[['MntWines', 'MntFruits', 'MntMeatProducts',
-                          'MntFishProducts', 'MntSweetProducts', 'MntGoldProds']].sum(axis=1)
-df['TotalChildren'] = df['Kidhome'] + df['Teenhome']
+# -- Customer_Tenure_Days
+if 'Dt_Customer' in df.columns:
+    df['Dt_Customer'] = pd.to_datetime(df['Dt_Customer'], errors='coerce')
+    latest_date = df['Dt_Customer'].max()
+    df['Customer_Tenure_Days'] = (latest_date - df['Dt_Customer']).dt.days
+else:
+    print("⚠️ Warning: 'Dt_Customer' missing, Customer_Tenure_Days set to 0.")
+    df['Customer_Tenure_Days'] = 0
 
-# Standardize education & marital status
-df['Education'] = df['Education'].replace({
-    'Graduation': 'Graduate', 'PhD': 'Postgraduate', 'Master': 'Postgraduate',
-    '2n Cycle': 'Graduate', 'Basic': 'Undergraduate'
-})
-df['Marital_Status'] = df['Marital_Status'].replace({
-    'Married': 'Partner', 'Together': 'Partner',
-    'Single': 'Alone', 'Divorced': 'Alone', 'Widow': 'Alone',
-    'Absurd': 'Alone', 'YOLO': 'Alone'
-})
+# -- TotalChildren
+if {'Kidhome', 'Teenhome'}.issubset(df.columns):
+    df['TotalChildren'] = df['Kidhome'] + df['Teenhome']
+else:
+    print("⚠️ Warning: 'Kidhome' or 'Teenhome' missing, TotalChildren set to 0.")
+    df['TotalChildren'] = 0
 
-# Add marketing-related derived features
-df['OnlinePurchaseRatio'] = df['NumWebPurchases'] / (df['NumStorePurchases'] + 1)
-df['PromotionAcceptanceRate'] = df[['AcceptedCmp1', 'AcceptedCmp2', 'AcceptedCmp3',
-                                    'AcceptedCmp4', 'AcceptedCmp5']].sum(axis=1) / 5
-df['AvgSpendingPerChild'] = df['TotalSpending'] / (df['TotalChildren'] + 1)
-df['Frequency'] = df[['NumDealsPurchases', 'NumWebPurchases',
-                      'NumCatalogPurchases', 'NumStorePurchases']].sum(axis=1)
-df['RecencyScore'] = (100 - df['Recency']) / 100  # Normalize recency (lower better)
-df['MonetaryScore'] = df['TotalSpending'] / df['Income']
-df['RFM_Score'] = (df['RecencyScore'] + (df['Frequency'] / df['Frequency'].max()) +
-                   (df['MonetaryScore'] / df['MonetaryScore'].max())) / 3
+# === 3. Pilih fitur sesuai form web ===
+selected_features = [
+    'Age', 'Income', 'Education', 'Marital_Status', 'TotalSpending', 'Recency',
+    'NumDealsPurchases', 'NumWebPurchases', 'NumCatalogPurchases', 'NumStorePurchases',
+    'NumWebVisitsMonth', 'AcceptedCmp1', 'AcceptedCmp2', 'AcceptedCmp3',
+    'AcceptedCmp4', 'AcceptedCmp5', 'Complain', 'Customer_Tenure_Days', 'TotalChildren'
+]
 
-# Drop unused columns
-df.drop([
-    'Year_Birth', 'Dt_Customer', 'MntWines', 'MntFruits', 'MntMeatProducts',
-    'MntFishProducts', 'MntSweetProducts', 'MntGoldProds', 'Kidhome', 'Teenhome'
-], axis=1, inplace=True)
+missing = [f for f in selected_features if f not in df.columns]
+if missing:
+    print(f"⚠️ Missing columns auto-created: {missing}")
+    for col in missing:
+        df[col] = 0
 
-# ======================================================
-# 3. Prepare Data for Modeling
-# ======================================================
-print(">>> Preparing data for model...")
-X = df.drop('Response', axis=1)
-y = df['Response']
+X = df[selected_features]
+y = df[target_col]
 
-numerical_cols = X.select_dtypes(include=['number']).columns
-categorical_cols = X.select_dtypes(include=['object', 'category']).columns
+# === 4. Tangani missing values ===
+df = df.replace(r'^\s*$', np.nan, regex=True)
+X = X.fillna(0)
+y = y.fillna(0)
+
+# === 5. Pisahkan numerik & kategorikal ===
+num_features = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
+cat_features = X.select_dtypes(include=['object']).columns.tolist()
+
+# === 6. Preprocessing ===
+numeric_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='median')),
+    ('scaler', StandardScaler())
+])
+
+categorical_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='most_frequent')),
+    ('encoder', OneHotEncoder(handle_unknown='ignore'))
+])
 
 preprocessor = ColumnTransformer(
     transformers=[
-        ('num', StandardScaler(), numerical_cols),
-        ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_cols)
+        ('num', numeric_transformer, num_features),
+        ('cat', categorical_transformer, cat_features)
     ]
 )
 
-# ======================================================
-# 4. Train-Test Split + Balancing (SMOTE)
-# ======================================================
+# === 7. Model ===
+model = RandomForestClassifier(
+    n_estimators=300,
+    class_weight='balanced',
+    random_state=42,
+    n_jobs=-1
+)
+
+# === 8. Combine pipeline ===
+pipeline = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('classifier', model)
+])
+
+# === 9. Split data ===
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-X_train_processed = preprocessor.fit_transform(X_train)
-X_test_processed = preprocessor.transform(X_test)
+# === 10. Train ===
+print("\n🚀 Training model (features aligned with web form)...")
+pipeline.fit(X_train, y_train)
 
-smote = SMOTE(random_state=42)
-X_train_res, y_train_res = smote.fit_resample(X_train_processed, y_train)
+# === 11. Evaluate ===
+y_pred = pipeline.predict(X_test)
+print("\n✅ Classification Report:\n", classification_report(y_test, y_pred))
 
-# ======================================================
-# 5. Model Training with Tuning
-# ======================================================
-print(">>> Training model with hyperparameter tuning...")
-base_model = RandomForestClassifier(random_state=42, n_jobs=-1, class_weight='balanced')
-
-param_grid = {
-    'n_estimators': [200, 400],
-    'max_depth': [10, 20, None],
-    'min_samples_split': [2, 5],
-    'min_samples_leaf': [1, 2]
-}
-
-grid_search = GridSearchCV(
-    base_model, param_grid, cv=3,
-    scoring='roc_auc', n_jobs=-1, verbose=1
+# === 12. Feature importance ===
+feature_names = (
+    num_features +
+    list(pipeline.named_steps['preprocessor']
+         .named_transformers_['cat']
+         .named_steps['encoder']
+         .get_feature_names_out(cat_features))
 )
-grid_search.fit(X_train_res, y_train_res)
 
-best_model = grid_search.best_estimator_
-print(f">>> Best Model Params: {grid_search.best_params_}")
-
-# ======================================================
-# 6. Evaluation
-# ======================================================
-print("\n--- Model Performance ---")
-y_pred = best_model.predict(X_test_processed)
-y_prob = best_model.predict_proba(X_test_processed)[:, 1]
-
-print(classification_report(y_test, y_pred, target_names=['Did not Respond (0)', 'Responded (1)']))
-print(f"ROC-AUC: {roc_auc_score(y_test, y_prob):.4f}")
-
-# ======================================================
-# 7. Save Artifacts
-# ======================================================
-print("\n>>> Saving model artifacts...")
-joblib.dump(preprocessor, 'preprocessor_pipeline.pkl')
-joblib.dump(best_model, 'campaign_model.pkl')
-joblib.dump(X.columns.tolist(), 'model_columns.pkl')
-
-# Save feature importance
-feature_names = preprocessor.get_feature_names_out()
-importances = best_model.feature_importances_
-feature_importance_df = pd.DataFrame({
+importances = pipeline.named_steps['classifier'].feature_importances_
+feature_importance = pd.DataFrame({
     'feature': feature_names,
     'importance': importances
-}).sort_values('importance', ascending=False)
-joblib.dump(feature_importance_df, 'feature_importance.pkl')
+}).sort_values(by='importance', ascending=False)
 
+# === 13. Save artifacts ===
+os.makedirs("models", exist_ok=True)
+joblib.dump(pipeline.named_steps['preprocessor'], 'models/preprocessor_pipeline.pkl')
+joblib.dump(pipeline.named_steps['classifier'], 'models/campaign_model.pkl')
+joblib.dump(feature_names, 'models/model_columns.pkl')
+joblib.dump(feature_importance, 'models/feature_importance.pkl')
+
+print("\n🎯 Model training complete and saved successfully in /models/")

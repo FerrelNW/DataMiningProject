@@ -1,116 +1,145 @@
-# Import render_template to serve HTML files
-from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
+# app.py
+from flask import Flask, render_template, request, jsonify
 import joblib
 import pandas as pd
-import traceback
-import numpy as np # Ditambahkan untuk mengenali tipe data
+import numpy as np
+from flask_cors import CORS
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates')
 CORS(app)
 
-# --- PHASE 1: Load all artifacts on server start ---
-try:
-    model = joblib.load("campaign_model.pkl")
-    preprocessor = joblib.load("preprocessor_pipeline.pkl")
-    feature_importance_df = joblib.load("feature_importance.pkl")
-    # Muat juga urutan kolom yang benar
-    model_columns = joblib.load("model_columns.pkl")
-    print(">>> All artifacts loaded successfully.")
-except Exception as e:
-    print(f"!!! ERROR loading artifacts: {e}")
-    model, preprocessor, feature_importance_df, model_columns = None, None, None, None
+# === Load model ===
+preprocessor = joblib.load('models/preprocessor_pipeline.pkl')
+model = joblib.load('models/campaign_model.pkl')
+feature_importance = joblib.load('models/feature_importance.pkl')
 
-# --- PHASE 2: Create Routes ---
-
-# Route to serve the main page (index.html)
 @app.route('/')
 def home():
     return render_template('index.html')
 
-# Route to serve the dashboard page
 @app.route('/dashboard')
 def dashboard():
     return render_template('dashboard.html')
 
-# Route for dashboard data API
-@app.route('/api/dashboard_data')
-def get_dashboard_data():
-    try:
-        df_raw = pd.read_csv('customer_segmentation.csv')
-        df_raw['Income'].fillna(df_raw['Income'].median(), inplace=True)
-        edu_dist = df_raw['Education'].value_counts()
-        df_raw['TotalSpending'] = df_raw.loc[:, 'MntWines':'MntGoldProds'].sum(axis=1)
-        income_spending_data = df_raw[['Income', 'TotalSpending']].dropna().to_dict('records')
-        income_spending_data_chartjs = [{'x': d['Income'], 'y': d['TotalSpending']} for d in income_spending_data]
-        spending_marital = df_raw.groupby('Marital_Status')['TotalSpending'].mean().sort_values(ascending=False)
-        spending_cols = ['MntWines', 'MntFruits', 'MntMeatProducts', 'MntFishProducts', 'MntSweetProducts', 'MntGoldProds']
-        spending_composition = df_raw[spending_cols].sum().sort_values(ascending=False)
-
-        dashboard_data = {
-            "education_dist": {"labels": edu_dist.index.tolist(), "values": edu_dist.values.tolist()},
-            "income_spending": {"data": income_spending_data_chartjs},
-            "spending_by_marital": {"labels": spending_marital.index.tolist(), "values": spending_marital.values.tolist()},
-            "spending_composition": {"labels": spending_composition.index.tolist(), "values": spending_composition.values.tolist()}
-        }
-        return jsonify(dashboard_data)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# Route to handle prediction logic (FINAL FIX HERE)
 @app.route('/predict', methods=['POST'])
 def predict():
-    if model and preprocessor and feature_importance_df is not None and model_columns is not None:
-        try:
-            json_data = request.get_json()
-            print(f"\n[INFO] Received new data: {json_data}")
+    try:
+        data = request.get_json()
+        input_df = pd.DataFrame([data])
 
-            # Buat DataFrame dari data input
-            input_df_unordered = pd.DataFrame([json_data])
+        X_processed = preprocessor.transform(input_df)
+        prediction_prob = model.predict_proba(X_processed)[0][1]
+        prediction_label = int(model.predict(X_processed)[0])
 
-            # --- INI PERBAIKAN UTAMA ---
-            # Pastikan DataFrame input memiliki kolom yang sama persis DAN URUTAN YANG SAMA
-            # seperti data yang digunakan saat training (X)
-            input_df = pd.DataFrame(columns=model_columns)
-            input_df = pd.concat([input_df, input_df_unordered], ignore_index=True)
-            input_df = input_df[model_columns] # Paksa urutan kolom sama
+        response_data = {
+            'prediction_probability': float(prediction_prob),
+            'prediction_label': prediction_label,
+            'reasons': [
+                {'feature': 'Income', 'value': data.get('Income', 0)},
+                {'feature': 'TotalSpending', 'value': data.get('TotalSpending', 0)},
+                {'feature': 'Recency', 'value': data.get('Recency', 0)}
+            ]
+        }
+        return jsonify(response_data)
 
-            # --- Logika XAI (sudah benar) ---
-            top_features = feature_importance_df.head(5)
-            reasons = []
-            processed_feature_names = preprocessor.get_feature_names_out()
+    except Exception as e:
+        print("!!! ERROR during prediction:", e)
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
 
-            for feature_name_processed in top_features['feature']:
-                original_col = feature_name_processed.split('__')[1]
-                if 'cat__' in feature_name_processed:
-                    original_col = '_'.join(original_col.split('_')[:-1])
+@app.route('/api/dashboard_data', methods=['GET'])
+def dashboard_data():
+    try:
+        df = pd.read_csv('customer_segmentation.csv')
+        df['Income'] = df['Income'].fillna(0)
 
-                if original_col in input_df.columns:
-                    user_value = input_df[original_col].values[0]
-                    if isinstance(user_value, np.integer): user_value = int(user_value)
-                    elif isinstance(user_value, np.floating): user_value = float(user_value)
-                    reasons.append({'feature': original_col, 'value': user_value})
-                if len(reasons) >= 3: break
+        # === 1. Buat Fitur Turunan ===
+        
+        spending_cols = ['MntWines', 'MntFruits', 'MntMeatProducts', 'MntFishProducts', 'MntSweetProducts', 'MntGoldProds']
+        existing_spend_cols = [col for col in spending_cols if col in df.columns]
+        df['TotalSpending'] = df[existing_spend_cols].sum(axis=1)
 
-            # --- Proses data dan lakukan prediksi (sudah benar) ---
-            processed_input = preprocessor.transform(input_df)
-            prediction_prob = model.predict_proba(processed_input)[0][1]
+        df['Age'] = 2025 - df['Year_Birth']
+        
+        df['TotalChildren'] = df['Kidhome'] + df['Teenhome']
+        df['Has_Children'] = (df['TotalChildren'] > 0).map({True: 'With Children', False: 'No Children'})
 
-            print(f"[INFO] Prediction probability: {prediction_prob:.4f}")
-            return jsonify({
-                'prediction_probability': prediction_prob,
-                'reasons': reasons
-            })
+        # === 2. Hitung KPI (Key Performance Indicators) ===
+        # === PERBAIKAN: Tambahkan .item() untuk konversi ke Python float ===
+        kpis = {
+            'total_customers': len(df), # len() sudah Python int, jadi aman
+            'avg_income': df['Income'].mean().item(),
+            'avg_spending': df['TotalSpending'].mean().item(),
+            'conversion_rate': (df['Response'].mean() * 100).item()
+        }
 
-        except Exception as e:
-            print(f"!!! ERROR during prediction: {e}")
-            print(traceback.format_exc())
-            return jsonify({'error': str(e)}), 500
-    else:
-        return jsonify({'error': 'Model artifacts not loaded. Check server logs.'}), 500
+        # === 3. Siapkan Data Grafik ===
+        
+        age_bins = [18, 29, 39, 49, 59, 69, 100]
+        age_labels = ['18-29', '30-39', '40-49', '50-59', '60-69', '70+']
+        age_dist = pd.cut(df['Age'], bins=age_bins, labels=age_labels, right=False).value_counts().sort_index()
+        
+        # === PERBAIKAN: Tambahkan .item() untuk konversi ke Python int ===
+        channel_totals = {
+            'Web': df['NumWebPurchases'].sum().item(),
+            'Catalog': df['NumCatalogPurchases'].sum().item(),
+            'Store': df['NumStorePurchases'].sum().item(),
+            'Deals': df['NumDealsPurchases'].sum().item()
+        }
+        
+        family_dist = df['Has_Children'].value_counts()
+        
+        spending_comp_labels = [col for col in existing_spend_cols if col in ['MntWines', 'MntFruits', 'MntGoldProds', 'MntMeatProducts', 'MntSweetProducts']]
+        spending_comp_values = [df[col].sum().item() for col in spending_comp_labels] # .item() sudah ada di sini
+        
+        spending_by_marital = df.groupby('Marital_Status')['TotalSpending'].mean()
 
-# --- PHASE 3: Run the Server ---
+        sample_n = min(1000, len(df))
+        
+        if sample_n > 0:
+            df_sample = df.sample(n=sample_n, random_state=1, replace=False)
+            income_spending_data = [
+                {'x': row['Income'], 'y': row['TotalSpending']} 
+                for _, row in df_sample.iterrows()
+            ]
+        else:
+            income_spending_data = []
+
+        # === 4. Kirim Semua Data ===
+        data = {
+            'kpis': kpis, # Sekarang sudah aman
+            'age_dist': {
+                'labels': age_dist.index.tolist(),
+                'values': age_dist.values.tolist() # .tolist() sudah otomatis konversi
+            },
+            'channel_totals': {
+                'labels': list(channel_totals.keys()),
+                'values': list(channel_totals.values()) # Sekarang sudah aman
+            },
+            'family_dist': {
+                'labels': family_dist.index.tolist(),
+                'values': family_dist.values.tolist() # .tolist() sudah otomatis konversi
+            },
+            'spending_composition': {
+                'labels': spending_comp_labels,
+                'values': spending_comp_values
+            },
+            'spending_by_marital': {
+                'labels': spending_by_marital.index.tolist(),
+                'values': spending_by_marital.values.tolist() # .tolist() sudah otomatis konversi
+            },
+            'income_spending': {
+                'data': income_spending_data
+            }
+        }
+        return jsonify(data)
+
+    except Exception as e:
+        print("Dashboard data error:", e)
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
-    print(">>> Starting Flask server at http://1.0.0.1:5000")
-    app.run(port=5000, debug=True)
+    app.run(debug=True)

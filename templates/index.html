@@ -1,193 +1,377 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prediksi Respons Kampanye</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        #result-card.success { background-color: #E6F4EA; border-left-color: #34A853; color: #1E8E3E; }
-        #result-card.failure { background-color: #FCE8E6; border-left-color: #EA4335; color: #C5221F; }
-        #result-card h3, #reasons-card h3 { color: #202124; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Customer Response Predictor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+    .nav-link {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    .nav-link.active {
+      background-color: #4f46e5;
+      color: white;
+    }
+    .nav-link:not(.active):hover {
+      background-color: #eef2ff;
+      color: #3730a3;
+    }
+    .form-input {
+      width: 100%; padding: 10px 14px; border: 1px solid #d1d5db;
+      border-radius: 8px; transition: all 0.2s ease;
+      background-color: #f9fafb;
+    }
+    .form-input:focus {
+      border-color: #4f46e5;
+      background-color: white;
+      box-shadow: 0 0 0 3px #c7d2fe;
+      outline: none;
+    }
+
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+  </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+<body class="min-h-screen">
 
-    <div class="w-full max-w-2xl mx-auto">
-        <div class="bg-white p-8 rounded-2xl shadow-lg">
-            <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-gray-800">Prediktor Respons Kampanye</h1>
-                <p class="text-gray-500 mt-2">Masukkan detail pelanggan untuk memprediksi kemungkinan mereka merespons.</p>
-            </div>
-
-            <form id="prediction-form" class="space-y-6">
-                <div class="grid md:grid-cols-2 gap-6">
-                    <div>
-                        <label for="age" class="block text-sm font-medium text-gray-700 mb-1">Umur (Age)</label>
-                        <input type="number" id="age" name="Age" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: 45">
-                    </div>
-                    <div>
-                        <label for="income" class="block text-sm font-medium text-gray-700 mb-1">Pendapatan Tahunan (Income)</label>
-                        <input type="number" id="income" name="Income" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: 55000">
-                    </div>
-                </div>
-                
-                <div class="grid md:grid-cols-2 gap-6">
-                    <div>
-                        <label for="education" class="block text-sm font-medium text-gray-700 mb-1">Pendidikan (Education)</label>
-                        <select id="education" name="Education" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                            <option value="Graduate">Graduate</option>
-                            <option value="Postgraduate">Postgraduate</option>
-                            <option value="Undergraduate">Undergraduate</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="marital_status" class="block text-sm font-medium text-gray-700 mb-1">Status Pernikahan</label>
-                        <select id="marital_status" name="Marital_Status" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                            <option value="Partner">Partner (Menikah/Bersama)</option>
-                            <option value="Alone">Alone (Lajang/Cerai/Janda)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="border-t pt-6">
-                    <div class="grid md:grid-cols-2 gap-6">
-                        <div>
-                            <label for="total_spending" class="block text-sm font-medium text-gray-700 mb-1">Total Belanja (2 Thn Terakhir)</label>
-                            <input type="number" id="total_spending" name="TotalSpending" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: 1250">
-                        </div>
-                         <div>
-                            <label for="recency" class="block text-sm font-medium text-gray-700 mb-1">Hari Sejak Pembelian Terakhir</label>
-                            <input type="number" id="recency" name="Recency" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: 30">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="pt-2">
-                    <button type="submit" id="submit-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300">
-                        <span id="btn-text">Prediksi Probabilitas</span>
-                        <span id="btn-loader" class="hidden">Memproses...</span>
-                    </button>
-                </div>
-            </form>
-
-            <div id="result-container" class="mt-8 hidden">
-                <div id="result-card" class="p-6 rounded-lg border-l-4">
-                    <h3 class="text-xl font-bold mb-2">Hasil Prediksi</h3>
-                    <p id="result-text" class="text-lg"></p>
-                </div>
-                <div id="reasons-card" class="mt-4 p-6 rounded-lg bg-gray-50 border border-gray-200">
-                    <h3 class="text-lg font-bold mb-3 text-gray-700">Faktor Kunci Prediksi</h3>
-                    <ul id="reasons-list" class="space-y-2 text-gray-600"></ul>
-                </div>
-            </div>
+  <nav class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex-shrink-0 flex items-center">
+          <svg class="h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span class="ml-2 text-xl font-bold text-gray-800">Marketing AI</span>
         </div>
+        <div class="flex items-center space-x-2">
+          <a href="/" class="nav-link active">Predictor</a>
+          <a href="/dashboard" class="nav-link">Dashboard</a>
+        </div>
+      </div>
     </div>
+  </nav>
 
-    <script>
-        const form = document.getElementById('prediction-form');
-        const submitBtn = document.getElementById('submit-btn');
-        const btnText = document.getElementById('btn-text');
-        const btnLoader = document.getElementById('btn-loader');
-        const resultContainer = document.getElementById('result-container');
-        const resultCard = document.getElementById('result-card');
-        const resultText = document.getElementById('result-text');
-        // Pastikan variabel ini dideklarasikan
-        const reasonsCard = document.getElementById('reasons-card');
-        const reasonsList = document.getElementById('reasons-list');
-        const API_URL = 'http://127.0.0.1:5000/predict';
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-        form.addEventListener('submit', async function(event) {
-            event.preventDefault();
-            setLoading(true);
+      <div class="bg-white p-8 rounded-xl shadow-lg">
+        <h1 class="text-3xl font-bold text-gray-900">Predict Customer Response</h1>
+        <p class="text-gray-600 mt-2 mb-6">Fill in the customer details to estimate their response probability for the next campaign.</p>
 
-            // Mengumpulkan data dari form.
-            const formData = {
-                // Pastikan nama-nama ini (Age, Income, dll) SAMA PERSIS
-                // dengan yang ada di skrip pelatihan Anda
-                'Age': parseInt(document.getElementById('age').value),
-                'Income': parseFloat(document.getElementById('income').value),
-                'Education': document.getElementById('education').value,
-                'Marital_Status': document.getElementById('marital_status').value,
-                'TotalSpending': parseFloat(document.getElementById('total_spending').value),
-                'Recency': parseInt(document.getElementById('recency').value),
-                
-                // --- Kolom lain yang dibutuhkan model (nilai default) ---
-                'NumDealsPurchases': 3,
-                'NumWebPurchases': 4,
-                'NumCatalogPurchases': 3,
-                'NumStorePurchases': 6,
-                'NumWebVisitsMonth': 5,
-                'AcceptedCmp1': 0, 'AcceptedCmp2': 0, 'AcceptedCmp3': 0, 
-                'AcceptedCmp4': 0, 'AcceptedCmp5': 0,
-                'Complain': 0,
-                'Customer_Tenure_Days': 500,
-                'TotalChildren': 1,
-            };
+        <form id="prediction-form" class="space-y-5">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label class="block text-sm font-medium mb-1 text-gray-700">Age</label>
+              <input type="number" id="age" name="Age" required placeholder="18-100" class="form-input" min="18" max="100">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1 text-gray-700">Annual Income ($)</label>
+              <input type="text" id="income" name="Income" required placeholder="Example: 60,000" class="form-input" inputmode="numeric">
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-1 text-gray-700">Education Level</label>
+            <select id="education" name="Education" required class="form-input">
+              <option value="Undergraduate">Undergraduate</option>
+              <option value="Graduate">Graduate</option>
+              <option value="Postgraduate">Postgraduate</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1 text-gray-700">Marital Status</label>
+            <select id="marital_status" name="Marital_Status" required class="form-input">
+              <option value="Partner">Partner (Married/Cohabiting)</option>
+              <option value="Alone">Alone (Single/Divorced/Widowed)</option>
+            </select>
+          </div>
 
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData)
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                // Kirim seluruh objek 'data' ke displayResult
-                displayResult(data);
-            } catch (error) {
-                console.error('Error:', error);
-                displayError(error.message);
-            } finally {
-                setLoading(false);
-            }
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label class="block text-sm font-medium mb-1 text-gray-700">Total Spending (2y)</label>
+              <input type="text" id="total_spending" name="TotalSpending" required placeholder="Example: 2,000" class="form-input" inputmode="numeric">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1 text-gray-700">Recency (Days)</label>
+              <input type="number" id="recency" name="Recency" required placeholder="Days since last purchase" class="form-input" min="0">
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-gray-200">
+            <button type="submit" id="submit-btn"
+              class="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition duration-300 flex items-center justify-center">
+              <span id="btn-text">Predict Response</span>
+              <svg id="btn-loader" class="animate-spin h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div id="result-container" class="bg-white p-8 rounded-xl shadow-lg h-full">
+        <div id="placeholder-result" class="flex flex-col items-center justify-center h-full text-center">
+            <svg class="h-16 w-16 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
+            </svg>
+            <h3 class="mt-4 text-xl font-semibold text-gray-700">Prediction Result</h3>
+            <p class="mt-1 text-gray-500">Your customer's response probability will appear here.</p>
+        </div>
+
+        <div id="prediction-output" class="hidden">
+          <h3 class="text-xl font-semibold text-gray-900 mb-4">Customer Likelihood</h3>
+          <div class="text-center my-6">
+            <h1 id="prob-percentage" class="text-7xl font-bold">...%</h1>
+            <p id="result-text" class="text-lg text-gray-600 mt-2"></p>
+          </div>
+
+          <div class="w-full bg-gray-200 rounded-full h-4 mb-8">
+            <div id="prob-bar" class="h-4 rounded-full transition-all duration-500 ease-out"></div>
+          </div>
+          
+          <div id="reasons-card">
+            <h3 class="text-lg font-bold mb-4 text-gray-800 border-b pb-3">Key Customer Metrics</h3>
+            <ul id="reasons-list" class="text-gray-700">
+              </ul>
+          </div>
+
+          <div id="error-message" class="hidden p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">
+            <strong>Error:</strong> <span id="error-text"></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    const form = document.getElementById('prediction-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const btnText = document.getElementById('btn-text');
+    const btnLoader = document.getElementById('btn-loader');
+    
+    const resultContainer = document.getElementById('result-container');
+    const placeholderResult = document.getElementById('placeholder-result');
+    const predictionOutput = document.getElementById('prediction-output');
+    
+    const probPercentage = document.getElementById('prob-percentage');
+    const resultText = document.getElementById('result-text');
+    const probBar = document.getElementById('prob-bar');
+    const reasonsList = document.getElementById('reasons-list');
+    
+    const errorMessage = document.getElementById('error-message');
+    const errorText = document.getElementById('error-text');
+
+    const incomeInput = document.getElementById('income');
+    const spendingInput = document.getElementById('total_spending');
+
+    function formatNumberInput(e) {
+      let input = e.target;
+      let value = input.value;
+      let numValue = value.replace(/[^0-9.]/g, ''); 
+      numValue = numValue.replace(/,/g, '');
+
+      if (numValue === '' || isNaN(parseFloat(numValue))) {
+        input.value = '';
+        return;
+      }
+      
+      let floatVal = parseFloat(numValue);
+      input.value = floatVal.toLocaleString('en-US');
+    }
+
+    function unformatNumberInput(e) {
+      let input = e.target;
+      let value = input.value;
+      input.value = value.replace(/,/g, '');
+    }
+
+    incomeInput.addEventListener('blur', formatNumberInput);
+    spendingInput.addEventListener('blur', formatNumberInput);
+    incomeInput.addEventListener('focus', unformatNumberInput);
+    spendingInput.addEventListener('focus', unformatNumberInput);
+
+    const API_URL = 'http://127.0.0.1:5000/predict';
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      toggleLoading(true);
+      
+      placeholderResult.classList.add('hidden');
+      errorMessage.classList.add('hidden');
+      predictionOutput.classList.remove('hidden');
+
+      const incomeValue = parseFloat(document.getElementById('income').value.replace(/,/g, '')) || 0;
+      const spendingValue = parseFloat(document.getElementById('total_spending').value.replace(/,/g, '')) || 0;
+
+      const data = {
+        Age: parseInt(document.getElementById('age').value),
+        Income: incomeValue,
+        Education: document.getElementById('education').value,
+        Marital_Status: document.getElementById('marital_status').value,
+        TotalSpending: spendingValue,
+        Recency: parseInt(document.getElementById('recency').value),
+        NumDealsPurchases: 3, NumWebPurchases: 4, NumCatalogPurchases: 3, NumStorePurchases: 6,
+        NumWebVisitsMonth: 5, AcceptedCmp1: 1, AcceptedCmp2: 1, AcceptedCmp3: 1,
+        AcceptedCmp4: 1, AcceptedCmp5: 0, 
+        Complain: 0, Customer_Tenure_Days: 500, TotalChildren: 1,
+      };
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
         });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error);
+        displayResult(result, data);
+      } catch (err) {
+        displayError(err.message);
+      } finally {
+        toggleLoading(false);
+      }
+    });
 
-        function setLoading(isLoading) {
-            submitBtn.disabled = isLoading;
-            btnText.classList.toggle('hidden', isLoading);
-            btnLoader.classList.toggle('hidden', !isLoading);
-        }
+    function toggleLoading(state) {
+      submitBtn.disabled = state;
+      btnText.classList.toggle('hidden', state);
+      btnLoader.classList.toggle('hidden', !state);
+    }
 
-        // Fungsi ini sekarang menerima 'data' (bukan cuma 'probability')
-        function displayResult(data) {
-            const { prediction_probability, reasons } = data;
-            const percentage = (prediction_probability * 100).toFixed(2);
-            resultText.innerHTML = `Pelanggan ini memiliki probabilitas sebesar <strong>${percentage}%</strong> untuk merespons.`;
-            resultCard.className = (prediction_probability > 0.5) ? 'p-6 rounded-lg border-l-4 success' : 'p-6 rounded-lg border-l-4 failure';
-            
-            reasonsList.innerHTML = ''; // Kosongkan daftar sebelumnya
-            
-            // Ini adalah logika untuk menampilkan 'reasons'
-            if (reasons && reasons.length > 0) {
-                reasons.forEach(reason => {
-                    const li = document.createElement('li');
-                    let reasonText = `- <strong>${reason.feature}:</strong> ${reason.value}`;
-                    if (reason.feature === 'Recency') reasonText += ' hari (semakin kecil, semakin aktif)';
-                    if (reason.feature === 'TotalSpending') reasonText += ' (semalin besar, semakin loyal)';
-                    if (reason.feature === 'Income') reasonText += ' (semakin besar, daya beli tinggi)';
-                    li.innerHTML = reasonText;
-                    reasonsList.appendChild(li);
-                });
-                reasonsCard.classList.remove('hidden');
-            } else {
-                 reasonsCard.classList.add('hidden');
-            }
-            resultContainer.classList.remove('hidden');
-        }
+    function displayResult(result, inputData) {
+      const prob = (result.prediction_probability * 100).toFixed(1);
+      
+      let colorClass = '';
+      let textClass = '';
+      let msg = '';
 
-        function displayError(errorMessage) {
-            resultText.innerHTML = `<strong>Terjadi Kesalahan:</strong><br>${errorMessage}.`;
-            resultCard.className = 'p-6 rounded-lg border-l-4 failure';
-            reasonsCard.classList.add('hidden'); // Sembunyikan kartu alasan jika error
-            resultContainer.classList.remove('hidden');
-        }
-    </script>
+      if (prob >= 60) {
+        colorClass = 'bg-green-600';
+        textClass = 'text-green-700';
+        msg = 'This customer is <strong>highly likely</strong> to respond.';
+      } else if (prob >= 30) {
+        colorClass = 'bg-yellow-500';
+        textClass = 'text-yellow-600';
+        msg = 'This customer has a <strong>moderate chance</strong> of responding.';
+      } else {
+        colorClass = 'bg-red-600';
+        textClass = 'text-red-700';
+        msg = 'This customer is <strong>less likely</strong> to respond.';
+      }
+      
+      probPercentage.innerText = `${prob}%`;
+      probPercentage.className = `text-7xl font-bold ${textClass}`;
+      resultText.innerHTML = msg;
+
+      probBar.style.width = `${prob}%`;
+      probBar.className = `h-4 rounded-full transition-all duration-500 ease-out ${colorClass}`;
+
+      reasonsList.innerHTML = ''; // Kosongkan daftar
+      reasonsList.className = 'space-y-4'; // Beri jarak antar elemen daftar
+
+      // 1. Annual Income
+      const income = inputData.Income;
+      const incomeLi = document.createElement('li');
+      incomeLi.className = 'flex justify-between items-center';
+      
+      let incomeClass = '';
+      let incomeText = '';
+      
+      if (income > 70000) { // Di atas $70k (Positif)
+        incomeClass = 'text-green-600 bg-green-50';
+        incomeText = 'High (Positive)';
+      } else if (income > 30000) { // $30k - $70k (Netral)
+        incomeClass = 'text-yellow-600 bg-yellow-50'; 
+        incomeText = 'Average (Neutral)';
+      } else { // Di bawah $30k (Risiko)
+        incomeClass = 'text-red-600 bg-red-50';
+        incomeText = 'Low (Risk)';
+      }
+
+      incomeLi.innerHTML = `
+        <div>
+          <span class="font-semibold text-gray-700">Annual Income</span>
+          <span class="block text-sm text-gray-500">$${income.toLocaleString('en-US')}</span>
+        </div>
+        <span class="text-sm font-medium ${incomeClass} px-2 py-0.5 rounded-full">${incomeText}</span>
+      `;
+      reasonsList.appendChild(incomeLi);
+
+      const spending = inputData.TotalSpending;
+      const spendingLi = document.createElement('li');
+      spendingLi.className = 'flex justify-between items-center';
+
+      let spendingClass = '';
+      let spendingText = '';
+
+      if (spending > 2500) { // Di atas $2.5k (Positif)
+        spendingClass = 'text-green-600 bg-green-50';
+        spendingText = 'High (Positive)';
+      } else if (spending > 1000) { // $1k - $2.5k (Netral)
+        spendingClass = 'text-yellow-600 bg-yellow-50';
+        spendingText = 'Average (Neutral)';
+      } else { // Di bawah $1k (Risiko)
+        spendingClass = 'text-red-600 bg-red-50';
+        spendingText = 'Low (Risk)';
+      }
+
+      spendingLi.innerHTML = `
+        <div>
+          <span class="font-semibold text-gray-700">Total Spending (2y)</span>
+          <span class="block text-sm text-gray-500">$${spending.toLocaleString('en-US')}</span>
+        </div>
+        <span class="text-sm font-medium ${spendingClass} px-2 py-0.5 rounded-full">${spendingText}</span>
+      `;
+      reasonsList.appendChild(spendingLi);
+
+      // 3. Recency (Days Since Last Purchase)
+      const recency = inputData.Recency;
+      const recencyLi = document.createElement('li');
+      
+      let recencyClass = '';
+      let recencyText = '';
+      
+      if (recency <= 20) { // 0-20 hari (Sangat Aktif)
+        recencyClass = 'text-green-600 bg-green-50';
+        recencyText = 'Very Active (Good)';
+      } else if (recency <= 60) { // 21-60 hari (Kurang Aktif)
+        recencyClass = 'text-yellow-600 bg-yellow-50';
+        recencyText = 'Less Active (Neutral)';
+      } else { // > 60 hari (Tidak Aktif)
+        recencyClass = 'text-red-600 bg-red-50';
+        recencyText = 'Inactive (Risk)';
+      }
+      
+      recencyLi.className = 'flex justify-between items-center';
+      recencyLi.innerHTML = `
+        <div>
+          <span class="font-semibold text-gray-700">Days Since Last Purchase</span>
+          <span class="block text-sm text-gray-500">${recency} days</span>
+        </div>
+        <span class="text-sm font-medium ${recencyClass} px-2 py-0.5 rounded-full">${recencyText}</span>
+      `;
+      reasonsList.appendChild(recencyLi);
+    }
+
+    function displayError(msg) {
+      predictionOutput.classList.add('hidden');
+      errorMessage.classList.remove('hidden');
+      errorText.innerText = msg || 'An unknown error occurred.';
+    }
+  </script>
 </body>
 </html>

@@ -12,23 +12,19 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import classification_report
 
-# === 1. Load dataset ===
 df = pd.read_csv("customer_segmentation.csv")
 
 target_col = 'Response'
 if target_col not in df.columns:
     raise ValueError(f"Column '{target_col}' not found in dataset. Please check column names.")
 
-# === 2. Tambahkan fitur turunan agar cocok dengan form input ===
 
-# -- Age
 if 'Year_Birth' in df.columns:
     df['Age'] = 2025 - df['Year_Birth']
 else:
     print("⚠️ Warning: 'Year_Birth' column missing, Age set to 0.")
     df['Age'] = 0
 
-# -- TotalSpending
 spending_cols = ['MntWines', 'MntFruits', 'MntMeatProducts', 'MntFishProducts', 'MntSweetProducts', 'MntGoldProds']
 existing_spend_cols = [c for c in spending_cols if c in df.columns]
 if existing_spend_cols:
@@ -37,7 +33,6 @@ else:
     print("⚠️ Warning: No spending columns found, TotalSpending set to 0.")
     df['TotalSpending'] = 0
 
-# -- Customer_Tenure_Days
 if 'Dt_Customer' in df.columns:
     df['Dt_Customer'] = pd.to_datetime(df['Dt_Customer'], errors='coerce')
     latest_date = df['Dt_Customer'].max()
@@ -46,14 +41,12 @@ else:
     print("⚠️ Warning: 'Dt_Customer' missing, Customer_Tenure_Days set to 0.")
     df['Customer_Tenure_Days'] = 0
 
-# -- TotalChildren
 if {'Kidhome', 'Teenhome'}.issubset(df.columns):
     df['TotalChildren'] = df['Kidhome'] + df['Teenhome']
 else:
     print("⚠️ Warning: 'Kidhome' or 'Teenhome' missing, TotalChildren set to 0.")
     df['TotalChildren'] = 0
 
-# === 3. Pilih fitur sesuai form web ===
 selected_features = [
     'Age', 'Income', 'Education', 'Marital_Status', 'TotalSpending', 'Recency',
     'NumDealsPurchases', 'NumWebPurchases', 'NumCatalogPurchases', 'NumStorePurchases',
@@ -70,16 +63,13 @@ if missing:
 X = df[selected_features]
 y = df[target_col]
 
-# === 4. Tangani missing values ===
 df = df.replace(r'^\s*$', np.nan, regex=True)
 X = X.fillna(0)
 y = y.fillna(0)
 
-# === 5. Pisahkan numerik & kategorikal ===
 num_features = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
 cat_features = X.select_dtypes(include=['object']).columns.tolist()
 
-# === 6. Preprocessing ===
 numeric_transformer = Pipeline(steps=[
     ('imputer', SimpleImputer(strategy='median')),
     ('scaler', StandardScaler())
@@ -105,26 +95,21 @@ model = RandomForestClassifier(
     n_jobs=-1
 )
 
-# === 8. Combine pipeline ===
 pipeline = Pipeline(steps=[
     ('preprocessor', preprocessor),
     ('classifier', model)
 ])
 
-# === 9. Split data ===
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-# === 10. Train ===
 print("\n🚀 Training model (features aligned with web form)...")
 pipeline.fit(X_train, y_train)
 
-# === 11. Evaluate ===
 y_pred = pipeline.predict(X_test)
 print("\n✅ Classification Report:\n", classification_report(y_test, y_pred))
 
-# === 12. Feature importance ===
 feature_names = (
     num_features +
     list(pipeline.named_steps['preprocessor']
@@ -139,7 +124,6 @@ feature_importance = pd.DataFrame({
     'importance': importances
 }).sort_values(by='importance', ascending=False)
 
-# === 13. Save artifacts ===
 os.makedirs("models", exist_ok=True)
 joblib.dump(pipeline.named_steps['preprocessor'], 'models/preprocessor_pipeline.pkl')
 joblib.dump(pipeline.named_steps['classifier'], 'models/campaign_model.pkl')

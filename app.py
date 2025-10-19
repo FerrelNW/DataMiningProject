@@ -8,7 +8,6 @@ from flask_cors import CORS
 app = Flask(__name__, template_folder='templates')
 CORS(app)
 
-# === Load model ===
 preprocessor = joblib.load('models/preprocessor_pipeline.pkl')
 model = joblib.load('models/campaign_model.pkl')
 feature_importance = joblib.load('models/feature_importance.pkl')
@@ -54,7 +53,6 @@ def dashboard_data():
         df = pd.read_csv('customer_segmentation.csv')
         df['Income'] = df['Income'].fillna(0)
 
-        # === 1. Buat Fitur Turunan ===
         
         spending_cols = ['MntWines', 'MntFruits', 'MntMeatProducts', 'MntFishProducts', 'MntSweetProducts', 'MntGoldProds']
         existing_spend_cols = [col for col in spending_cols if col in df.columns]
@@ -65,22 +63,19 @@ def dashboard_data():
         df['TotalChildren'] = df['Kidhome'] + df['Teenhome']
         df['Has_Children'] = (df['TotalChildren'] > 0).map({True: 'With Children', False: 'No Children'})
 
-        # === 2. Hitung KPI (Key Performance Indicators) ===
-        # === PERBAIKAN: Tambahkan .item() untuk konversi ke Python float ===
+      
         kpis = {
-            'total_customers': len(df), # len() sudah Python int, jadi aman
+            'total_customers': len(df),
             'avg_income': df['Income'].mean().item(),
             'avg_spending': df['TotalSpending'].mean().item(),
             'conversion_rate': (df['Response'].mean() * 100).item()
         }
 
-        # === 3. Siapkan Data Grafik ===
-        
+
         age_bins = [18, 29, 39, 49, 59, 69, 100]
         age_labels = ['18-29', '30-39', '40-49', '50-59', '60-69', '70+']
         age_dist = pd.cut(df['Age'], bins=age_bins, labels=age_labels, right=False).value_counts().sort_index()
         
-        # === PERBAIKAN: Tambahkan .item() untuk konversi ke Python int ===
         channel_totals = {
             'Web': df['NumWebPurchases'].sum().item(),
             'Catalog': df['NumCatalogPurchases'].sum().item(),
@@ -91,7 +86,7 @@ def dashboard_data():
         family_dist = df['Has_Children'].value_counts()
         
         spending_comp_labels = [col for col in existing_spend_cols if col in ['MntWines', 'MntFruits', 'MntGoldProds', 'MntMeatProducts', 'MntSweetProducts']]
-        spending_comp_values = [df[col].sum().item() for col in spending_comp_labels] # .item() sudah ada di sini
+        spending_comp_values = [df[col].sum().item() for col in spending_comp_labels]
         
         spending_by_marital = df.groupby('Marital_Status')['TotalSpending'].mean()
 
@@ -106,20 +101,19 @@ def dashboard_data():
         else:
             income_spending_data = []
 
-        # === 4. Kirim Semua Data ===
         data = {
-            'kpis': kpis, # Sekarang sudah aman
+            'kpis': kpis, 
             'age_dist': {
                 'labels': age_dist.index.tolist(),
-                'values': age_dist.values.tolist() # .tolist() sudah otomatis konversi
+                'values': age_dist.values.tolist()
             },
             'channel_totals': {
                 'labels': list(channel_totals.keys()),
-                'values': list(channel_totals.values()) # Sekarang sudah aman
+                'values': list(channel_totals.values()) 
             },
             'family_dist': {
                 'labels': family_dist.index.tolist(),
-                'values': family_dist.values.tolist() # .tolist() sudah otomatis konversi
+                'values': family_dist.values.tolist()
             },
             'spending_composition': {
                 'labels': spending_comp_labels,
@@ -127,7 +121,7 @@ def dashboard_data():
             },
             'spending_by_marital': {
                 'labels': spending_by_marital.index.tolist(),
-                'values': spending_by_marital.values.tolist() # .tolist() sudah otomatis konversi
+                'values': spending_by_marital.values.tolist()
             },
             'income_spending': {
                 'data': income_spending_data

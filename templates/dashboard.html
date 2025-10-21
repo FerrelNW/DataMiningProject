@@ -16,12 +16,12 @@
       transition: all 0.2s ease;
     }
     .nav-link.active {
-      background-color: #4f46e5; /* Indigo-600 */
+      background-color: #4f46e5;
       color: white;
     }
     .nav-link:not(.active):hover {
-      background-color: #eef2ff; /* Indigo-50 */
-      color: #3730a3; /* Indigo-800 */
+      background-color: #eef2ff;
+      color: #3730a3;
     }
     .chart-card {
       background: white;
@@ -43,14 +43,13 @@
     .kpi-title {
       font-size: 0.9rem;
       font-weight: 600;
-      color: #4b5563; /* Gray-600 */
+      color: #4b5563;
     }
     .kpi-value {
       font-size: 2.25rem;
       font-weight: 700;
-      color: #1f2937; /* Gray-800 */
+      color: #1f2937;
     }
-    /* Kontainer Chart */
     .chart-container {
         position: relative;
         height: 300px; 
@@ -170,7 +169,6 @@
       }
     }
 
-    // === FUNGSI BARU UNTUK ISI KPI ===
     function renderKPIs(kpis) {
       document.getElementById('kpi-total-customers').innerText = kpis.total_customers.toLocaleString('en-US');
       document.getElementById('kpi-avg-income').innerText = formatCurrency(kpis.avg_income);
@@ -179,8 +177,7 @@
     }
 
     function renderCharts(data) {
-      
-      // Grafik 1: Income vs Spending (Scatter)
+      // Income vs Spending (Scatter)
       new Chart(document.getElementById('incomeSpendingChart'), {
         type: 'scatter',
         data: {
@@ -201,7 +198,7 @@
         }
       });
       
-      // Grafik 2: Age Distribution (Bar) - BARU
+      //Age Distribution (Bar)
       new Chart(document.getElementById('ageChart'), {
         type: 'bar',
         data: {
@@ -209,7 +206,7 @@
           datasets: [{
             label: 'Number of Customers',
             data: data.age_dist.values,
-            backgroundColor: '#34d399', // Green
+            backgroundColor: '#34d399',
           }]
         },
         options: {
@@ -219,7 +216,7 @@
         }
       });
       
-      // Grafik 3: Purchase Channels (Bar) - BARU
+      //Purchase Channels (Bar)
       new Chart(document.getElementById('channelChart'), {
         type: 'bar',
         data: {
@@ -237,7 +234,7 @@
         }
       });
 
-      // Grafik 4: Spending Composition (Horizontal Bar)
+      //Spending Composition (Horizontal Bar)
       new Chart(document.getElementById('spendingCompositionChart'), {
         type: 'bar',
         data: {
@@ -245,18 +242,18 @@
           datasets: [{
             label: 'Total Spending ($)',
             data: data.spending_composition.values,
-            backgroundColor: '#f59e0b' // Yellow/Amber
+            backgroundColor: '#f59e0b'
           }]
         },
         options: {
-          indexAxis: 'y', // Membuatnya horizontal
+          indexAxis: 'y',
           responsive: true, maintainAspectRatio: false,
           scales: { x: { beginAtZero: true } },
           plugins: { legend: { display: false } }
         }
       });
 
-      // Grafik 5: Spending by Marital Status (Horizontal Bar)
+      // Spending by Marital Status (Horizontal Bar)
       new Chart(document.getElementById('spendingMaritalChart'), {
         type: 'bar',
         data: {
@@ -275,14 +272,14 @@
         }
       });
 
-      // Grafik 6: Family Structure (Doughnut) - BARU
+      // Family Structure (Doughnut)
       new Chart(document.getElementById('familyChart'), {
         type: 'doughnut',
         data: {
           labels: data.family_dist.labels,
           datasets: [{
             data: data.family_dist.values,
-            backgroundColor: ['#4f46e5', '#ef4444'], // Indigo & Red
+            backgroundColor: ['#4f46e5', '#ef4444'],
             borderColor: '#fff', borderWidth: 2
           }]
         },

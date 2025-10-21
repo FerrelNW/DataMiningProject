@@ -280,10 +280,10 @@
       probBar.style.width = `${prob}%`;
       probBar.className = `h-4 rounded-full transition-all duration-500 ease-out ${colorClass}`;
 
-      reasonsList.innerHTML = ''; // Kosongkan daftar
-      reasonsList.className = 'space-y-4'; // Beri jarak antar elemen daftar
+      reasonsList.innerHTML = '';
+      reasonsList.className = 'space-y-4';
 
-      // 1. Annual Income
+      // Annual Income
       const income = inputData.Income;
       const incomeLi = document.createElement('li');
       incomeLi.className = 'flex justify-between items-center';
@@ -311,6 +311,7 @@
       `;
       reasonsList.appendChild(incomeLi);
 
+      // Total Spending
       const spending = inputData.TotalSpending;
       const spendingLi = document.createElement('li');
       spendingLi.className = 'flex justify-between items-center';
@@ -338,7 +339,7 @@
       `;
       reasonsList.appendChild(spendingLi);
 
-      // 3. Recency (Days Since Last Purchase)
+      // Recency (Days Since Last Purchase)
       const recency = inputData.Recency;
       const recencyLi = document.createElement('li');
       

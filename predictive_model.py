@@ -86,7 +86,6 @@ preprocessor = ColumnTransformer(
     ]
 )
 
-# === 7. Model ===
 model = RandomForestClassifier(
     n_estimators=300,
     class_weight='balanced',
